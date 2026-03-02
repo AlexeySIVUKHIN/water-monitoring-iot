@@ -1,0 +1,150 @@
+{% extends 'water/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'sensor_list' %}">Датчики</a></li>
+            <li class="breadcrumb-item active">{{ sensor.name }}</li>
+        </ol>
+    </nav>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h3>{{ sensor.name }}</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Описание:</strong> {{ sensor.description|default:"—" }}</p>
+                    <p><strong>MAC:</strong> {{ sensor.mac_address }}</p>
+                    <p><strong>ID устройства:</strong> {{ sensor.device_id }}</p>
+                </div>
+                <div class="col-md-6">
+                    {% if sensor.latitude and sensor.longitude %}
+                    <p><strong>📍 Координаты:</strong></p>
+                    <p>Широта: {{ sensor.latitude }}°</p>
+                    <p>Долгота: {{ sensor.longitude }}°</p>
+                    <p>
+                        <a href="https://maps.google.com/?q={{ sensor.latitude }},{{ sensor.longitude }}" 
+                           target="_blank" class="btn btn-sm btn-outline-primary">
+                            Открыть на карте →
+                        </a>
+                    </p>
+                    {% else %}
+                    <p class="text-muted">Координаты не указаны</p>
+                    {% endif %}
+                </div>
+            </div>
+            <p class="mt-2"><strong>Последнее подключение:</strong> {{ sensor.last_seen|timesince }} назад</p>
+        </div>
+    </div>
+    
+    <!-- Средние значения за сегодня -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5 class="card-title">📊 Средние значения за сегодня</h5>
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h6>🌡️ Температура</h6>
+                        <h3>
+                            {% if avg_temperature %}
+                                {{ avg_temperature|floatformat:1 }}°C
+                            {% else %}
+                                —
+                            {% endif %}
+                        </h3>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>💧 TDS</h6>
+                        <h3>
+                            {% if avg_tds %}
+                                {{ avg_tds|floatformat:0 }} ppm
+                            {% else %}
+                                —
+                            {% endif %}
+                        </h3>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>🌫️ Мутность</h6>
+                        <h3>
+                            {% if avg_turbidity %}
+                                {{ avg_turbidity|floatformat:2 }} В
+                            {% else %}
+                                —
+                            {% endif %}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Форма выбора даты -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>📅 Выберите дату для просмотра</h5>
+    </div>
+    <div class="card-body">
+        <form action="{% url 'sensor_by_date' sensor.id %}" method="get" class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label">Дата</label>
+                <input type="date" name="date" class="form-control" required value="{{ today|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">
+                    Показать измерения за эту дату
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Последние 10 измерений -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">📋 Последние 10 измерений</h5>
+        <a href="{% url 'sensor_all' sensor.id %}" class="btn btn-primary btn-sm">
+            Показать все измерения →
+        </a>
+    </div>
+    <div class="card-body">
+        <!-- Таблица с последними 10 измерениями (оставляем как есть) -->
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Время</th>
+                        <th>🌡️ Темп.</th>
+                        <th>💧 TDS</th>
+                        <th>🌫️ Мутн.</th>
+                        <th>🧪 pH</th>
+                        <th>📡 Сигнал</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in recent_measurements %}
+                    <tr>
+                        <td>{{ m.timestamp|date:"Y-m-d H:i:s" }}</td>
+                        <td>{{ m.temperature|default:"—" }}°C</td>
+                        <td>{{ m.tds|default:"—" }}</td>
+                        <td>{{ m.turbidity|default:"—" }}</td>
+                        <td>{{ m.ph|default:"—" }}</td>
+                        <td>{{ m.signal_strength|default:"—" }} dBm</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">Нет измерений</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endblock %}
