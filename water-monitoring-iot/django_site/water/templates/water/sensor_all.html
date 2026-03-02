@@ -1,0 +1,209 @@
+{% extends 'water/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'sensor_list' %}">Датчики</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'sensor_detail' sensor.id %}">{{ sensor.name }}</a></li>
+            <li class="breadcrumb-item active">Все измерения</li>
+        </ol>
+    </nav>
+    
+    <h2>{{ sensor.name }} — все измерения</h2>
+
+    <!-- График всех измерений (опционально, можно ограничить последними 100 точками) -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>📈 График (последние 100 измерений)</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="sensorChart" style="height: 400px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Таблица со всеми измерениями -->
+    <div class="card">
+        <div class="card-header">
+            <h5>📋 Все измерения</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            <th>Температура (°C)</th>
+                            <th>TDS (ppm)</th>
+                            <th>Мутность (В)</th>
+                            <th>pH</th>
+                            <th>Сигнал (dBm)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in page_obj %}
+                        <tr>
+                            <td>{{ m.timestamp|date:"Y-m-d H:i:s" }}</td>
+                            <td>{{ m.temperature|floatformat:1|default:"—" }}</td>
+                            <td>{{ m.tds|default:"—" }}</td>
+                            <td>{{ m.turbidity|floatformat:2|default:"—" }}</td>
+                            <td>{{ m.ph|floatformat:1|default:"—" }}</td>
+                            <td>{{ m.signal_strength|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">Нет измерений</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Пагинация -->
+            {% if page_obj.has_other_pages %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1">« Первая</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹ Предыдущая</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">Стр. {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Следующая ›</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Последняя »</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Скрипт для графика (только если есть данные) -->
+{% if chart_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+
+    // Собираем данные из chart_data
+    const labels = [];
+    const tempData = [];
+    const tdsData = [];
+    const turbData = [];
+
+    {% for m in chart_data %}
+        labels.push('{{ m.timestamp|date:"H:i" }}');
+        tempData.push(parseFloat({{ m.temperature|stringformat:"f" }} || 0));
+        tdsData.push(parseFloat({{ m.tds|stringformat:"f" }} || 0));
+        turbData.push(parseFloat({{ m.turbidity|stringformat:"f" }} || 0));
+    {% endfor %}
+
+    console.log("Все измерения - данные для графика:", tempData, tdsData, turbData);
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Температура (°C)',
+                    data: tempData,
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.3,
+                    yAxisID: 'y-temperature'
+                },
+                {
+                    label: 'TDS (ppm)',
+                    data: tdsData,
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.3,
+                    yAxisID: 'y-tds'
+                },
+                {
+                    label: 'Мутность (В)',
+                    data: turbData,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.3,
+                    yAxisID: 'y-turbidity'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                'y-temperature': {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Температура (°C)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(1);
+                        }
+                    }
+                },
+                'y-tds': {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'TDS (ppm)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(0);
+                        }
+                    }
+                },
+                'y-turbidity': {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Мутность (В)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

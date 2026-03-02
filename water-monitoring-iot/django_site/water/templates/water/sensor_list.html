@@ -1,0 +1,67 @@
+{% extends 'water/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Мои датчики</h1>
+    
+    <div class="row">
+        {% for sensor in sensors %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">{{ sensor.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">{{ sensor.description|default:"Нет описания" }}</p>
+                    
+                    {% if sensor.latitude and sensor.longitude %}
+                    <p class="small">
+                        📍 Координаты: {{ sensor.latitude }}, {{ sensor.longitude }}
+                    </p>
+                    {% endif %}
+                    
+                    {% if sensor.last_time %}
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <small>🌡️ Темп.</small>
+                            <h6>{{ sensor.last_temp|default:"—" }}°C</h6>
+                        </div>
+                        <div class="col-3">
+                            <small>💧 TDS</small>
+                            <h6>{{ sensor.last_tds|default:"—" }}</h6>
+                        </div>
+                        <div class="col-3">
+                            <small>🌫️ Мутн.</small>
+                            <h6>{{ sensor.last_turbidity|default:"—" }}</h6>
+                        </div>
+                        <div class="col-3">
+                            <small>🧪 pH</small>
+                            <h6>{{ sensor.last_ph|default:"—" }}</h6>
+                        </div>
+                    </div>
+                    <p class="small text-muted mt-2">
+                        Обновлено: {{ sensor.last_time|timesince }} назад
+                    </p>
+                    {% else %}
+                    <p class="text-center text-muted">Нет данных</p>
+                    {% endif %}
+                    
+                    <p class="mt-2">
+                        <span class="badge bg-secondary">MAC: {{ sensor.mac_address }}</span>
+                    </p>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'sensor_detail' sensor.id %}" class="btn btn-primary btn-sm">Подробнее →</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                У вас пока нет датчиков. Добавьте их через <a href="/admin/">админку</a>.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
